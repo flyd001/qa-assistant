@@ -1,0 +1,336 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>班组报表填写完成清单</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: "Microsoft YaHei", sans-serif; }
+        body { background: #edf2f7; color: #2d3748; padding: 20px 10px; display: flex; justify-content: center; }
+        .container { background: #fff; width: 100%; max-width: 650px; border-radius: 16px; box-shadow: 0 10px 25px rgba(0,0,0,0.08); padding: 25px; }
+
+        header { text-align: center; margin-bottom: 20px; }
+        h2 { font-size: 22px; margin-bottom: 15px; color: #1a202c; }
+
+        /* 班次切换 & 高温控制区 */
+        .controls-box { display: flex; flex-direction: column; gap: 10px; margin-bottom: 15px; }
+        .mode-selector { display: flex; justify-content: center; gap: 8px; background: #e2e8f0; padding: 4px; border-radius: 10px; }
+        .mode-btn { flex: 1; padding: 10px 0; border: none; border-radius: 8px; font-size: 14px; font-weight: bold; cursor: pointer; transition: 0.2s; background: transparent; color: #4a5568; }
+        .mode-btn.active-day { background: #ed8936; color: #fff; }
+        .mode-btn.active-night { background: #2b6cb0; color: #fff; }
+
+        /* 特殊高温开关按钮 (夜班专属) */
+        .hot-toggle-btn { padding: 8px 12px; border: 1px dashed #e53e3e; background: #fff5f5; color: #e53e3e; border-radius: 8px; font-size: 13px; font-weight: bold; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 6px; transition: 0.2s; }
+        .hot-toggle-btn.active { background: #e53e3e; color: #fff; border-style: solid; }
+
+        /* 进度条 */
+        .progress-box { background: #f7fafc; padding: 12px 15px; border-radius: 10px; margin-bottom: 20px; border: 1px solid #e2e8f0; }
+        .progress-title { display: flex; justify-content: space-between; font-size: 13px; font-weight: bold; margin-bottom: 6px; }
+        .progress-bar-bg { background: #cbd5e0; height: 10px; border-radius: 5px; overflow: hidden; }
+        .progress-bar-fill { background: #48bb78; height: 100%; width: 0%; transition: width 0.3s; }
+
+        /* 清单列表 */
+        .todo-list { list-style: none; margin-bottom: 15px; }
+        .todo-item { display: flex; align-items: center; justify-content: space-between; padding: 12px 15px; border-radius: 8px; margin-bottom: 8px; border: 1px solid #e2e8f0; transition: 0.2s; background: #fff; }
+        .todo-item:hover { transform: translateY(-1px); box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
+        .todo-item.completed { opacity: 0.5; background: #f7fafc !important; border-color: #e2e8f0 !important; }
+        .todo-item.completed .todo-text { text-decoration: line-through; color: #a0aec0 !important; }
+
+        .left-part { display: flex; align-items: center; gap: 12px; }
+        input[type="checkbox"] { width: 18px; height: 18px; cursor: pointer; accent-color: #38a169; }
+        .todo-text { font-size: 15px; font-weight: 500; }
+
+        /* 颜色区分 */
+        .item-night { background: #ebf8ff; border-color: #bee3f8; }
+        .item-night .todo-text { color: #2b6cb0; }
+        .tag-night { font-size: 10px; background: #2b6cb0; color: #fff; padding: 2px 6px; border-radius: 4px; }
+
+        .item-leader { background: #fffaf0; border-color: #fbd38d; }
+        .item-leader .todo-text { color: #c05621; font-weight: bold; }
+        .tag-leader { font-size: 10px; background: #dd6b20; color: #fff; padding: 2px 6px; border-radius: 4px; }
+
+        .item-hot { background: #fff5f5; border: 2px solid #feb2b2; }
+        .item-hot .todo-text { color: #c53030; font-weight: bold; }
+        .tag-hot { font-size: 10px; background: #e53e3e; color: #fff; padding: 2px 6px; border-radius: 4px; animation: blink 1.5s infinite; }
+
+        @keyframes blink {
+            0% { opacity: 1; }
+            50% { opacity: 0.5; }
+            100% { opacity: 1; }
+        }
+
+        .item-custom { background: #f0fff4; border-color: #c6f6d5; }
+        .tag-custom { font-size: 10px; background: #38a169; color: #fff; padding: 2px 6px; border-radius: 4px; }
+        .del-btn { background: none; border: none; color: #e53e3e; cursor: pointer; font-size: 14px; margin-left: 8px; display: none; }
+        .todo-item:hover .del-btn { display: inline; }
+
+        .add-box { display: flex; gap: 8px; margin-bottom: 15px; }
+        .add-input { flex: 1; padding: 10px 12px; border: 1px solid #cbd5e0; border-radius: 8px; font-size: 14px; outline: none; }
+        .add-input:focus { border-color: #3182ce; }
+        .add-btn { background: #3182ce; color: white; border: none; padding: 10px 16px; border-radius: 8px; font-weight: bold; cursor: pointer; }
+        .add-btn:hover { background: #2b6cb0; }
+
+        .reset-btn { width: 100%; padding: 12px; background: #edf2f7; border: 1px solid #cbd5e0; border-radius: 8px; color: #4a5568; font-weight: bold; cursor: pointer; font-size: 14px; }
+        .reset-btn:hover { background: #e2e8f0; }
+
+        /* 统一弹窗样式 */
+        .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.4); justify-content: center; align-items: center; z-index: 1000; }
+        .modal-content { background: #fff; padding: 25px; border-radius: 12px; text-align: center; max-width: 320px; width: 85%; }
+        .modal-btn { background: #38a169; color: white; border: none; padding: 8px 20px; border-radius: 6px; margin-top: 15px; cursor: pointer; font-weight: bold; }
+        .modal-actions { display: flex; gap: 10px; justify-content: center; margin-top: 20px; }
+        .btn-cancel { background: #cbd5e0; color: #2d3748; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer; font-weight: bold; }
+        .btn-confirm { background: #e53e3e; color: white; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer; font-weight: bold; }
+
+        /* 全局深色模式样式适配 */
+    body.dark-mode { background-color: #121212 !important; color: #e0e0e0 !important; }
+    body.dark-mode .card, body.dark-mode .task-item, body.dark-mode .note-item, body.dark-mode .box { background: #1e1e1e !important; color: #fff !important; }
+    body.dark-mode input, body.dark-mode textarea, body.dark-mode select { background-color: #2c2c2c !important; color: #ffffff !important; border-color: #444 !important; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <header>
+        <h2>📊 班组报表填写完成清单</h2>
+        <div class="controls-box">
+            <div class="mode-selector">
+                <button type="button" class="mode-btn active-day" id="btnDay" onclick="setShift('day')">☀️ 白班模式</button>
+                <button type="button" class="mode-btn" id="btnNight" onclick="setShift('night')">🌙 夜班模式</button>
+            </div>
+            <button type="button" class="hot-toggle-btn" id="btnHot" onclick="toggleHotProduct()" style="display: none;">
+                <span>🔥 夜班是否有“6点高温产品”？</span>
+                <span id="hotStatusText">[ 点击开启 ]</span>
+            </button>
+        </div>
+    </header>
+
+    <div class="progress-box">
+        <div class="progress-title">
+            <span>报表完成进度</span>
+            <span id="progressText">0%</span>
+        </div>
+        <div class="progress-bar-bg">
+            <div class="progress-bar-fill" id="progressBar"></div>
+        </div>
+    </div>
+
+    <!-- 任务列表 -->
+    <ul class="todo-list" id="todoList"></ul>
+
+    <!-- 手动新增备注框 -->
+    <div class="add-box">
+        <input type="text" id="customInput" class="add-input" placeholder="添加手动备注/临时增加报表..." onkeypress="handleKeyPress(event)">
+        <button type="button" class="add-btn" onclick="addCustomTask()">添加</button>
+    </div>
+
+    <!-- 重置按钮 -->
+    <button type="button" class="reset-btn" onclick="openResetModal()">🔄 交接班 / 清空重置</button>
+</div>
+
+<!-- 完美搞定弹窗 -->
+<div class="modal" id="successModal">
+    <div class="modal-content">
+        <div style="font-size: 40px;">🎉</div>
+        <h3 style="margin: 10px 0 5px 0;">报表全搞定！</h3>
+        <p style="color: #718096; font-size: 14px;">当班所有基础报表、特殊加项及手动备注均已完成！</p>
+        <button type="button" class="modal-btn" onclick="closeModal('successModal')">好的</button>
+    </div>
+</div>
+
+<!-- 自定义重置确认弹窗（替代原生的 confirm 弹窗） -->
+<div class="modal" id="resetModal">
+    <div class="modal-content">
+        <div style="font-size: 36px;">⚠️</div>
+        <h3 style="margin: 10px 0 5px 0;">确认清空打勾？</h3>
+        <p style="color: #718096; font-size: 13px;">将清空当班所有已勾选项（高温状态与自定义备注会保留）。</p>
+        <div class="modal-actions">
+            <button type="button" class="btn-cancel" onclick="closeModal('resetModal')">取消</button>
+            <button type="button" class="btn-confirm" onclick="confirmReset()">确认重置</button>
+        </div>
+    </div>
+</div>
+
+<script>
+    // 自动同步全局护眼模式
+     if (localStorage.getItem('darkMode') === 'true') {
+         document.body.classList.add('dark-mode');
+     }
+     const BASE_TASKS = [
+         { id: 't1', text: "1. 投入报表", shift: "both", isLeader: false },
+         { id: 't2', text: "2. 质量日报", shift: "both", isLeader: false },
+         { id: 't3', text: "3. 调度报表", shift: "both", isLeader: false },
+         { id: 't4', text: "4. ADG 及 CR 报表", shift: "both", isLeader: false },
+         { id: 't5', text: "5. 颗粒汇总", shift: "both", isLeader: false },
+         { id: 't6', text: "6. 打包数据", shift: "both", isLeader: false },
+         { id: 't7', text: "7. 颗粒 PT", shift: "both", isLeader: false },
+         { id: 't8', text: "8. 📷 抽检图片上传", shift: "both", isLeader: false },
+         { id: 't9', text: "9. 📷 呼气相图片上传", shift: "both", isLeader: false },
+         { id: 't10', text: "10. 研磨幅", shift: "both", isLeader: false },
+         { id: 't11', text: "11. 标签报表填写", shift: "both", isLeader: false },
+         { id: 't12', text: "👑 12. PPT 汇报 (班长)", shift: "both", isLeader: true },
+         { id: 't13', text: "👑 13. 当班白表 (班长)", shift: "both", isLeader: true },
+         { id: 't14', text: "🌙 14. 20 颗粒占比 (夜班)", shift: "night", isLeader: false },
+         { id: 't15', text: "🌙 15. 边部统计 (夜班)", shift: "night", isLeader: false },
+         { id: 't16', text: "🌙 16. 全天再清洗统计 (夜班)", shift: "night", isLeader: false },
+         { id: 't17', text: "🌙 17. 呼气相汇总 (夜班)", shift: "night", isLeader: false },
+         { id: 't18', text: "👑 18. QA 质量日报 (班长夜班)", shift: "night", isLeader: true },
+         { id: 't_hot', text: "🚨 19. 6点高温产品报表 (重点防护/核对)", shift: "night", isHot: true }
+     ];
+
+     let currentShift = 'day';
+     let hasHotProduct = JSON.parse(localStorage.getItem('has_hot_product') || 'false');
+     let completedIds = JSON.parse(localStorage.getItem('completed_reports') || '[]');
+     let customTasks = JSON.parse(localStorage.getItem('custom_tasks') || '[]');
+
+     function setShift(shift) {
+         currentShift = shift;
+         document.getElementById('btnDay').className = 'mode-btn ' + (shift === 'day' ? 'active-day' : '');
+         document.getElementById('btnNight').className = 'mode-btn ' + (shift === 'night' ? 'active-night' : '');
+         render();
+     }
+
+     function toggleHotProduct() {
+         hasHotProduct = !hasHotProduct;
+         localStorage.setItem('has_hot_product', JSON.stringify(hasHotProduct));
+         render();
+     }
+
+     function render() {
+         const hotBtn = document.getElementById('btnHot');
+         const hotStatusText = document.getElementById('hotStatusText');
+
+         if (currentShift === 'night') {
+             hotBtn.style.display = 'flex';
+             if (hasHotProduct) {
+                 hotBtn.className = 'hot-toggle-btn active';
+                 hotStatusText.innerText = '[ 已开启高亮展示 ]';
+             } else {
+                 hotBtn.className = 'hot-toggle-btn';
+                 hotStatusText.innerText = '[ 点击开启 ]';
+             }
+         } else {
+             hotBtn.style.display = 'none';
+         }
+
+         const listEl = document.getElementById('todoList');
+         listEl.innerHTML = '';
+
+         let visibleTasks = BASE_TASKS.filter(task => {
+             if (task.shift === 'night' && currentShift !== 'night') return false;
+             if (task.isHot && (!hasHotProduct || currentShift !== 'night')) return false;
+             return true;
+         });
+
+         let allVisible = [...visibleTasks, ...customTasks];
+         let completedCnt = 0;
+
+         allVisible.forEach(task => {
+             const isDone = completedIds.includes(task.id);
+             if (isDone) completedCnt++;
+
+             const li = document.createElement('li');
+             let extraClass = '';
+             let tagHtml = '';
+
+             if (task.isCustom) {
+                 extraClass = 'item-custom';
+                 tagHtml = `<span class="tag-custom">📌 备注</span><button type="button" class="del-btn" onclick="deleteCustomTask('${task.id}')">✕</button>`;
+             } else if (task.isHot) {
+                 extraClass = 'item-hot';
+                 tagHtml = '<span class="tag-hot">🚨 高温产品预警</span>';
+             } else if (task.isLeader) {
+                 extraClass = 'item-leader';
+                 tagHtml = '<span class="tag-leader">班长专属</span>';
+             } else if (task.shift === 'night') {
+                 extraClass = 'item-night';
+                 tagHtml = '<span class="tag-night">夜班加项</span>';
+             }
+
+             li.className = `todo-item ${extraClass} ${isDone ? 'completed' : ''}`;
+             li.innerHTML = `
+                 <div class="left-part">
+                     <input type="checkbox" ${isDone ? 'checked' : ''} onchange="toggleTask('${task.id}')">
+                     <span class="todo-text">${escapeHtml(task.text)}</span>
+                 </div>
+                 <div>${tagHtml}</div>
+             `;
+             listEl.appendChild(li);
+         });
+
+         const total = allVisible.length;
+         const percent = total === 0 ? 0 : Math.round((completedCnt / total) * 100);
+         document.getElementById('progressBar').style.width = percent + '%';
+         document.getElementById('progressText').innerText = percent + '% (' + completedCnt + '/' + total + ')';
+
+         if (total > 0 && completedCnt === total) {
+             showSuccessModal();
+         }
+     }
+
+     function toggleTask(id) {
+         if (completedIds.includes(id)) {
+             completedIds = completedIds.filter(i => i !== id);
+         } else {
+             completedIds.push(id);
+         }
+         localStorage.setItem('completed_reports', JSON.stringify(completedIds));
+         render();
+     }
+
+     function addCustomTask() {
+         const input = document.getElementById('customInput');
+         const text = input.value.trim();
+         if (text) {
+             const newTask = { id: 'c_' + Date.now(), text: text, isCustom: true };
+             customTasks.push(newTask);
+             localStorage.setItem('custom_tasks', JSON.stringify(customTasks));
+             input.value = '';
+             render();
+         }
+     }
+
+     function handleKeyPress(e) {
+         if (e.key === 'Enter') addCustomTask();
+     }
+
+     function deleteCustomTask(id) {
+         customTasks = customTasks.filter(t => t.id !== id);
+         completedIds = completedIds.filter(i => i !== id);
+         localStorage.setItem('custom_tasks', JSON.stringify(customTasks));
+         localStorage.setItem('completed_reports', JSON.stringify(completedIds));
+         render();
+     }
+
+     /* 🛠️ 新增：自定义弹窗控制 */
+     function openResetModal() {
+         document.getElementById('resetModal').style.display = 'flex';
+     }
+
+     function closeModal(id) {
+         document.getElementById(id).style.display = 'none';
+     }
+
+     /* 执行真正的重置逻辑 */
+     function confirmReset() {
+         completedIds = [];
+         localStorage.removeItem('completed_reports');
+         sessionStorage.removeItem('modal_shown');
+         closeModal('resetModal');
+         render();
+     }
+
+     function showSuccessModal() {
+         if (sessionStorage.getItem('modal_shown')) return;
+         document.getElementById('successModal').style.display = 'flex';
+         sessionStorage.setItem('modal_shown', 'true');
+     }
+
+     function escapeHtml(str) {
+         return str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+     }
+
+     render();
+</script>
+
+</body>
+</html>

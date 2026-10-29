@@ -1,0 +1,324 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>工作笔记</title>
+    <style>
+        // 自动同步全局护眼模式
+    if (localStorage.getItem('darkMode') === 'true') {
+        document.body.classList.add('dark-mode');
+    }
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: sans-serif; }
+        body { background-color: #f4f6f9; color: #333; padding: 15px; }
+        h2 { text-align: center; margin-bottom: 15px; color: #F57C00; }
+
+        /* 顶部选项卡导航 */
+        .tabs { display: flex; justify-content: space-around; background: #fff; border-radius: 8px; padding: 5px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); margin-bottom: 15px; }
+        .tab-btn { flex: 1; padding: 10px 0; text-align: center; font-size: 14px; font-weight: bold; color: #666; cursor: pointer; border-radius: 6px; border: none; background: transparent; transition: 0.2s; }
+        .tab-btn.active { background: #F57C00; color: #fff; }
+
+        /* 内容面板 */
+        .panel { display: none; background: #fff; border-radius: 10px; padding: 15px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); }
+        .panel.active { display: block; }
+
+        /* 通用表单元素 */
+        h3 { font-size: 16px; margin-bottom: 10px; color: #444; border-left: 4px solid #F57C00; padding-left: 8px; }
+        textarea, input[type="text"] { width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 6px; font-size: 14px; margin-bottom: 10px; outline: none; }
+        textarea { height: 100px; resize: none; }
+        .btn { width: 100%; padding: 10px; background: #F57C00; color: white; border: none; border-radius: 6px; font-size: 15px; font-weight: bold; cursor: pointer; margin-bottom: 10px; }
+        .btn:active { background: #d86a00; }
+
+        /* 列表展示 */
+        .record-item { background: #fff8f0; border-left: 4px solid #F57C00; padding: 10px; border-radius: 4px; margin-bottom: 10px; font-size: 14px; position: relative; }
+        .record-time { font-size: 11px; color: #888; margin-top: 5px; }
+        .delete-btn { position: absolute; right: 10px; top: 10px; color: #ff5252; font-size: 12px; cursor: pointer; }
+
+        .template-card { background: #f9f9f9; border: 1px dashed #ccc; padding: 10px; border-radius: 6px; margin-bottom: 8px; cursor: pointer; }
+        .template-card:hover { background: #fff3e0; border-color: #F57C00; }
+    /* 全局深色模式样式适配 */
+    body.dark-mode { background-color: #121212 !important; color: #e0e0e0 !important; }
+    body.dark-mode .card, body.dark-mode .task-item, body.dark-mode .note-item, body.dark-mode .box { background: #1e1e1e !important; color: #fff !important; }
+    body.dark-mode input, body.dark-mode textarea, body.dark-mode select { background-color: #2c2c2c !important; color: #ffffff !important; border-color: #444 !important; }
+    </style>
+</head>
+<body>
+
+<h2>📝 工作笔记中心</h2>
+
+<!-- 顶部 3 个子模块切换标签 -->
+<div class="tabs">
+    <button class="tab-btn active" onclick="switchTab(0)">1. 信息模板</button>
+    <button class="tab-btn" onclick="switchTab(1)">2. 工作纪要</button>
+    <button class="tab-btn" onclick="switchTab(2)">3. 其他随手记</button>
+</div>
+
+<!-- 子模块一：信息模板 -->
+<div id="panel-0" class="panel active">
+    <h3>📌 快捷模板套用</h3>
+    <p style="font-size: 12px; color: #666; margin-bottom: 10px;">点击下方模板可快速复制或套用：</p>
+
+    <<!-- 4个专业质量固定模板 -->
+    <div class="template-card" onclick="useTemplate('【C03-边部不良】\n🕑时间：\n💡现象描述：连续检出片下短边掉片\n影响：片废弃\n临时措施：已反馈生产对策\n初步原因：生产排查中\n边部图如下：')">
+        <strong>📋 【C03-边部不良】</strong>
+        <div style="font-size: 12px; color: #888;">连续检出片下短边掉片、废弃、临时对策...</div>
+    </div>
+
+    <div class="template-card" onclick="useTemplate('【C03-间断检出固定位置B面污渍】\n🕑时间：\n💡现象描述:检出片XY固定B面污渍，\n影响：片判再清洗\n临时措施：通知生产排查对策\n初步原因：生产排查中\n图如下：')">
+        <strong>📋 【C03-间断检出固定位置B面污渍】</strong>
+        <div style="font-size: 12px; color: #888;">检出片XY固定B面污渍、判再清洗...</div>
+    </div>
+
+    <div class="template-card" onclick="useTemplate('【C03-颗粒异常】\n🕑时间：\n💡现象描述：连续两版第道颗粒异常（1道/1道），抽检为污渍\n临时措施：反馈生产对策，已通知检包转架追溯\n初步原因：生产排查中\n颗粒图如下：')">
+        <strong>📋 【C03-颗粒异常】</strong>
+        <div style="font-size: 12px; color: #888;">连续两版颗粒异常、抽检污渍、转架追溯...</div>
+    </div>
+
+    <div class="template-card" onclick="useTemplate('三线投入DX6-EA202411005（2024年11月26日5:50-2024年11月26日10:25）投入片，前工程不良共检出片，占比%，（其中检出气泡片，占比%，结石片，占比%，PT颗粒片，占比%，针状PT占比%，ADG片，占比%，油污片，占比%），通知生产换架投入')">
+        <strong>📋 【三线投入不良明细统计汇报】</strong>
+        <div style="font-size: 12px; color: #888;">详细投入批次、各不良占比、气泡/结石/PT/ADG等统计...</div>
+    </div>
+
+    <h3 style="margin-top: 20px;">➕ 自定义添加模板</h3>
+    <input type="text" id="tplTitle" placeholder="模板标题 (如: 班组安全告知)">
+    <textarea id="tplContent" placeholder="输入模板具体内容..."></textarea>
+    <button class="btn" onclick="saveTemplate()">保存自定义模板</button>
+    <div id="customTemplatesList"></div>
+</div>
+
+<!-- 子模块二：工作记录纪要 (带时间戳) -->
+<!-- 子模块二：工作记录纪要 (带图文与时间戳) -->
+<div id="panel-1" class="panel">
+    <h3>⏱️ 现场工作纪要 (支持图文与时间)</h3>
+    <textarea id="noteContent" placeholder="记录当前工作细节、异常处理过程..."></textarea>
+
+    <!-- 新增：图片选择按钮与预览区 -->
+    <div style="margin-bottom: 10px;">
+        <label style="display: inline-block; background: #e0e0e0; color: #333; padding: 6px 12px; border-radius: 4px; font-size: 13px; cursor: pointer;">
+            📷 选择现场图片
+            <input type="file" id="imageInput" accept="image/*" style="display: none;" onchange="previewImage(this)">
+        </label>
+        <span id="imgTip" style="font-size: 12px; color: #666; margin-left: 8px;">未选择图片</span>
+    </div>
+    <!-- 图片预览小框 -->
+    <div id="imagePreviewContainer" style="margin-bottom: 10px; display: none;">
+        <img id="imgPreview" src="" alt="预览图" style="max-width: 100px; max-height: 100px; border-radius: 4px; border: 1px solid #ddd;">
+        <span onclick="clearImage()" style="color: #ff5252; font-size: 12px; cursor: pointer; margin-left: 10px;">删除图片</span>
+    </div>
+
+    <button class="btn" onclick="saveNote()">保存工作纪要</button>
+
+    <h3 style="margin-top: 15px;">历史纪要列表</h3>
+    <div id="notesList"></div>
+</div>
+
+<!-- 子模块三：其他随手记 -->
+<!-- 子模块三：其他随手记 (带图文与时间) -->
+<div id="panel-2" class="panel">
+    <h3>💡 其他自由录入 (支持图文)</h3>
+    <input type="text" id="miscTitle" placeholder="输入主题/标题...">
+    <textarea id="miscContent" placeholder="随便记录点什么，临时数据、备忘录..."></textarea>
+
+    <!-- 新增：其他随手记的图片选择与预览 -->
+    <div style="margin-bottom: 10px;">
+        <label style="display: inline-block; background: #e0e0e0; color: #333; padding: 6px 12px; border-radius: 4px; font-size: 13px; cursor: pointer;">
+            📷 选择随手记图片
+            <input type="file" id="miscImageInput" accept="image/*" style="display: none;" onchange="previewMiscImage(this)">
+        </label>
+        <span id="miscImgTip" style="font-size: 12px; color: #666; margin-left: 8px;">未选择图片</span>
+    </div>
+    <!-- 随手记图片预览小框 -->
+    <div id="miscImagePreviewContainer" style="margin-bottom: 10px; display: none;">
+        <img id="miscImgPreview" src="" alt="预览图" style="max-width: 100px; max-height: 100px; border-radius: 4px; border: 1px solid #ddd;">
+        <span onclick="clearMiscImage()" style="color: #ff5252; font-size: 12px; cursor: pointer; margin-left: 10px;">删除图片</span>
+    </div>
+
+    <button class="btn" onclick="saveMisc()">录入并保存</button>
+
+    <h3 style="margin-top: 15px;">已保存的备忘</h3>
+    <div id="miscList"></div>
+</div>
+
+<script>
+    // 切换面板逻辑
+    function switchTab(index) {
+        let panels = document.querySelectorAll('.panel');
+        let btns = document.querySelectorAll('.tab-btn');
+        panels.forEach((p, i) => {
+            p.classList.toggle('active', i === index);
+            btns[i].classList.toggle('active', i === index);
+        });
+    }
+
+    // 模块一：模板套用与自定义
+    function useTemplate(content) {
+        switchTab(1); // 自动切到工作纪要页
+        document.getElementById('noteContent').value = content;
+    }
+
+    function saveTemplate() {
+        let title = document.getElementById('tplTitle').value.trim();
+        let content = document.getElementById('tplContent').value.trim();
+        if(!title || !content) { alert('标题和内容不能为空！'); return; }
+
+        let tpls = JSON.parse(localStorage.getItem('custom_tpls') || '[]');
+        tpls.push({title, content});
+        localStorage.setItem('custom_tpls', JSON.stringify(tpls));
+
+        document.getElementById('tplTitle').value = '';
+        document.getElementById('tplContent').value = '';
+        loadCustomTemplates();
+        alert('模板保存成功！');
+    }
+
+    function loadCustomTemplates() {
+        let list = document.getElementById('customTemplatesList');
+        let tpls = JSON.parse(localStorage.getItem('custom_tpls') || '[]');
+        list.innerHTML = tpls.map((t, idx) => `
+            <div class="template-card" onclick="useTemplate('${t.content.replace(/\n/g, '\\n')}')">
+                <strong>📌 ${t.title}</strong>
+                <div style="font-size: 12px; color: #888;">${t.content.substring(0, 30)}...</div>
+                <span class="delete-btn" onclick="event.stopPropagation(); deleteTpl(${idx})">删除</span>
+            </div>
+        `).join('');
+    }
+    function deleteTpl(idx) {
+        let tpls = JSON.parse(localStorage.getItem('custom_tpls') || '[]');
+        tpls.splice(idx, 1);
+        localStorage.setItem('custom_tpls', JSON.stringify(tpls));
+        loadCustomTemplates();
+    }
+
+    // --- 模块二：工作纪要图片处理 ---
+    let currentImageBase64 = "";
+
+    function previewImage(input) {
+        if (input.files && input.files[0]) {
+            let reader = new FileReader();
+            reader.onload = function (e) {
+                currentImageBase64 = e.target.result;
+                document.getElementById('imgPreview').src = currentImageBase64;
+                document.getElementById('imagePreviewContainer').style.display = 'block';
+                document.getElementById('imgTip').innerText = "已选择图片";
+            }
+            reader.readAsDataURL(input.files[0]);
+        }
+    }
+
+    function clearImage() {
+        currentImageBase64 = "";
+        document.getElementById('imageInput').value = "";
+        document.getElementById('imagePreviewContainer').style.display = 'none';
+        document.getElementById('imgTip').innerText = "未选择图片";
+    }
+
+    function saveNote() {
+        let content = document.getElementById('noteContent').value.trim();
+        if(!content && !currentImageBase64) { alert('内容和图片不能同时为空！'); return; }
+
+        let timeStr = new Date().toLocaleString();
+        let notes = JSON.parse(localStorage.getItem('work_notes') || '[]');
+
+        notes.unshift({ content: content, time: timeStr, image: currentImageBase64 });
+        localStorage.setItem('work_notes', JSON.stringify(notes));
+
+        document.getElementById('noteContent').value = '';
+        clearImage();
+        loadNotes();
+    }
+
+    function loadNotes() {
+        let list = document.getElementById('notesList');
+        let notes = JSON.parse(localStorage.getItem('work_notes') || '[]');
+
+        list.innerHTML = notes.map((n, idx) => `
+            <div class="record-item">
+                <div>${n.content ? n.content.replace(/\n/g, '<br>') : ''}</div>
+                ${n.image ? `<div style="margin-top: 8px;"><img src="${n.image}" style="max-width: 100%; max-height: 150px; border-radius: 4px; border: 1px solid #ddd;"></div>` : ''}
+                <div class="record-time">⏱️ 记录时间：${n.time}</div>
+                <span class="delete-btn" onclick="deleteNote(${idx})">删除</span>
+            </div>
+        `).join('');
+    }
+    function deleteNote(idx) {
+        let notes = JSON.parse(localStorage.getItem('work_notes') || '[]');
+        notes.splice(idx, 1);
+        localStorage.setItem('work_notes', JSON.stringify(notes));
+        loadNotes();
+    }
+
+    // --- 模块三：其他随手记图片处理 ---
+    let currentMiscImageBase64 = "";
+
+    function previewMiscImage(input) {
+        if (input.files && input.files[0]) {
+            let reader = new FileReader();
+            reader.onload = function (e) {
+                currentMiscImageBase64 = e.target.result;
+                document.getElementById('miscImgPreview').src = currentMiscImageBase64;
+                document.getElementById('miscImagePreviewContainer').style.display = 'block';
+                document.getElementById('miscImgTip').innerText = "已选择图片";
+            }
+            reader.readAsDataURL(input.files[0]);
+        }
+    }
+
+    function clearMiscImage() {
+        currentMiscImageBase64 = "";
+        document.getElementById('miscImageInput').value = "";
+        document.getElementById('miscImagePreviewContainer').style.display = 'none';
+        document.getElementById('miscImgTip').innerText = "未选择图片";
+    }
+
+    function saveMisc() {
+        let title = document.getElementById('miscTitle').value.trim();
+        let content = document.getElementById('miscContent').value.trim();
+        if(!title && !content && !currentMiscImageBase64) { alert('标题、内容和图片不能全为空！'); return; }
+
+        let timeStr = new Date().toLocaleString();
+        let miscs = JSON.parse(localStorage.getItem('misc_records') || '[]');
+
+        miscs.unshift({
+            title: title || '无标题',
+            content: content,
+            time: timeStr,
+            image: currentMiscImageBase64
+        });
+        localStorage.setItem('misc_records', JSON.stringify(miscs));
+
+        document.getElementById('miscTitle').value = '';
+        document.getElementById('miscContent').value = '';
+        clearMiscImage();
+        loadMiscs();
+    }
+
+    function loadMiscs() {
+        let list = document.getElementById('miscList');
+        let miscs = JSON.parse(localStorage.getItem('misc_records') || '[]');
+
+        list.innerHTML = miscs.map((m, idx) => `
+            <div class="record-item" style="border-left-color: #455A64; background: #f0f4f8;">
+                <strong>${m.title}</strong>
+                <div style="margin-top: 4px;">${m.content ? m.content.replace(/\n/g, '<br>') : ''}</div>
+                ${m.image ? `<div style="margin-top: 8px;"><img src="${m.image}" style="max-width: 100%; max-height: 150px; border-radius: 4px; border: 1px solid #ddd;"></div>` : ''}
+                <div class="record-time">⏱️ ${m.time}</div>
+                <span class="delete-btn" onclick="deleteMisc(${idx})">删除</span>
+            </div>
+        `).join('');
+    }
+    function deleteMisc(idx) {
+        let miscs = JSON.parse(localStorage.getItem('misc_records') || '[]');
+        miscs.splice(idx, 1);
+        localStorage.setItem('misc_records', JSON.stringify(miscs));
+        loadMiscs();
+    }
+
+    // 页面打开时加载本地存储的数据
+    window.onload = function() {
+        loadCustomTemplates();
+        loadNotes();
+        loadMiscs();
+    };
+</script>
+</body>
+</html>

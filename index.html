@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>QA班长专属工作助手</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+        body { background-color: #f4f6f9; color: #333; padding: 15px; max-width: 600px; margin: 0 auto; }
+        
+        .card { background: #fff; border-radius: 12px; padding: 14px; margin-bottom: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.06); }
+        
+        /* 1. 今日班次卡片 */
+        .shift-card { background: #E3F2FD; border-left: 5px solid #1976D2; }
+        .shift-title { font-size: 14px; font-weight: bold; color: #1976D2; }
+        .shift-detail { font-size: 16px; font-weight: bold; color: #333; margin-top: 6px; }
+
+        /* 2. 领导交办 / 临时工作清单卡片 */
+        .temp-card { background: #FFF3E0; border-left: 5px solid #E65100; }
+        .temp-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+        .temp-title { font-size: 14px; font-weight: bold; color: #E65100; }
+        .reset-btn { font-size: 12px; font-weight: bold; color: #D32F2F; cursor: pointer; background: none; border: none; }
+        
+        .input-group { display: flex; gap: 8px; margin-bottom: 8px; }
+        .input-group input { flex: 1; padding: 8px 10px; border: 1px solid #ccc; border-radius: 6px; font-size: 14px; outline: none; }
+        .input-group button { padding: 0 14px; background: #E65100; color: #fff; border: none; border-radius: 6px; font-size: 13px; font-weight: bold; cursor: pointer; }
+        
+        .task-list { font-size: 14px; color: #333; line-height: 1.6; max-height: 150px; overflow-y: auto; }
+        .task-item { padding: 4px 0; border-bottom: 1px dashed #ffe0b2; }
+        .empty-tip { color: #888; font-size: 13px; }
+
+        /* 3. 功能跳转大卡片入口 */
+        .nav-card { display: flex; align-items: center; justify-content: center; height: 75px; border-radius: 10px; color: #fff; font-size: 20px; font-weight: bold; margin-bottom: 12px; cursor: pointer; box-shadow: 0 2px 5px rgba(0,0,0,0.1); text-decoration: none; user-select: none; }
+        .nav-card:active { opacity: 0.85; transform: scale(0.99); }
+        
+        .bg-daily { background: #00A86B; }
+        .bg-calendar { background: #0288D1; }
+        .bg-notes { background: #F57C00; }
+    </style>
+</head>
+<body>
+
+    <!-- 1. 今日班次状态卡片 -->
+    <div class="card shift-card">
+        <div class="shift-title">📅 今日班次状态</div>
+        <div class="shift-detail" id="tvShiftDetail">正在计算今日班次...</div>
+    </div>
+
+    <!-- 2. 领导交办 / 临时工作清单卡片 -->
+    <div class="card temp-card">
+        <div class="temp-header">
+            <span class="temp-title">📌 领导交办 / 临时工作清单</span>
+            <button class="reset-btn" onclick="resetTasks()">🔄 重置清空</button>
+        </div>
+        <div class="input-group">
+            <input type="text" id="etTempWork" placeholder="输入临时任务..." onkeypress="handleKeyPress(event)" />
+            <button onclick="addTask()">添加</button>
+        </div>
+        <div class="task-list" id="layoutTempWorkList"></div>
+    </div>
+
+    <!-- 3. 三大核心功能模块入口 -->
+    <a href="daily_task.html" class="nav-card bg-daily">📋  日常任务报表</a>
+    <a href="schedule_calendar.html" class="nav-card bg-calendar">📅  9天排班日历</a>
+    <a href="work_notes.html" class="nav-card bg-notes">📝  工作笔记中心</a>
+
+<script>
+    // 自动计算 9 天班次 (锚定 2026-10-04)
+    function calculateTodayShift() {
+        try {
+            const baseDate = new Date("2026-10-04T00:00:00");
+            const today = new Date();
+            const diffMillis = today.getTime() - baseDate.getTime();
+            const diffDays = Math.floor(diffMillis / (1000 * 60 * 60 * 24));
+            let cycleDay = diffDays % 9;
+            if (cycleDay < 0) cycleDay += 9;
+
+            let shiftText = "";
+            if (cycleDay >= 0 && cycleDay <= 2) {
+                shiftText = "🌙 夜班 (第 " + (cycleDay + 1) + " 天)";
+            } else if (cycleDay >= 3 && cycleDay <= 5) {
+                shiftText = "🏖️ 今天休息，好好放松！ (休息第 " + (cycleDay - 2) + " 天)";
+            } else {
+                shiftText = "☀️ 白班 (第 " + (cycleDay - 5) + " 天)";
+            }
+            document.getElementById("tvShiftDetail").innerText = shiftText;
+        } catch (e) {
+            document.getElementById("tvShiftDetail").innerText = "班次计算异常";
+        }
+    }
+
+    // 临时工作清单本地存储
+    function loadTasks() {
+        const listContainer = document.getElementById("layoutTempWorkList");
+        let tasks = JSON.parse(localStorage.getItem("temp_work_list") || "[]");
+        if (tasks.length === 0) {
+            listContainer.innerHTML = '<div class="empty-tip">暂无临时任务，随时记录...</div>';
+            return;
+        }
+        listContainer.innerHTML = tasks.map(t => `<div class="task-item">• ${t}</div>`).join('');
+    }
+
+    function addTask() {
+        const input = document.getElementById("etTempWork");
+        const text = input.value.trim();
+        if (!text) { alert("请输入任务内容"); return; }
+        const now = new Date();
+        const timePrefix = String(now.getHours()).padStart(2, '0') + ":" + String(now.getMinutes()).padStart(2, '0');
+        let tasks = JSON.parse(localStorage.getItem("temp_work_list") || "[]");
+        tasks.push(`[${timePrefix}] ${text}`);
+        localStorage.setItem("temp_work_list", JSON.stringify(tasks));
+        input.value = "";
+        loadTasks();
+    }
+
+    function handleKeyPress(e) {
+        if (e.key === 'Enter') addTask();
+    }
+
+    function resetTasks() {
+        if (confirm("确定要清空所有临时任务吗？")) {
+            localStorage.removeItem("temp_work_list");
+            loadTasks();
+        }
+    }
+
+    window.onload = function() {
+        calculateTodayShift();
+        loadTasks();
+    }
+</script>
+</body>
+</html>

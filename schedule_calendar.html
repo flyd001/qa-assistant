@@ -1,0 +1,433 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>排班日历</title>
+    <style>
+        :root {
+            --bg-color: #f4f6f9;
+            --card-bg: #ffffff;
+            --text-main: #333333;
+            --text-sub: #777777;
+            --night-color: #5c6bc0; /* 夜班：蓝紫色 */
+            --rest-color: #66bb6a;  /* 休息：清新绿 */
+            --day-color: #ffa726;   /* 白班：暖橙色 */
+            --today-border: #0288d1;/* 今天：湖水蓝 */
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            padding: 12px;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        /* 顶部月份切换栏 */
+        .header {
+            background: var(--card-bg);
+            border-radius: 12px;
+            padding: 12px 16px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+        }
+
+        .header h2 {
+            font-size: 18px;
+            font-weight: 600;
+        }
+
+        .btn {
+            background: #e3f2fd;
+            color: #0288d1;
+            border: none;
+            padding: 6px 12px;
+            border-radius: 6px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+        }
+
+        .btn:active {
+            opacity: 0.8;
+        }
+
+        /* 班次图例说明 */
+        .legend {
+            display: flex;
+            justify-content: space-around;
+            background: var(--card-bg);
+            padding: 10px;
+            border-radius: 10px;
+            font-size: 12px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+        }
+
+        .dot.night { background: var(--night-color); }
+        .dot.rest { background: var(--rest-color); }
+        .dot.day { background: var(--day-color); }
+
+        /* 日历主表格 */
+        .calendar-card {
+            background: var(--card-bg);
+            border-radius: 12px;
+            padding: 12px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+        }
+
+        .week-header {
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            text-align: center;
+            font-weight: 600;
+            font-size: 13px;
+            color: var(--text-sub);
+            margin-bottom: 8px;
+        }
+
+        .days-grid {
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            gap: 6px;
+        }
+
+        .day-cell {
+            aspect-ratio: 1;
+            border-radius: 8px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+            background: #fafafa;
+            border: 1px solid #f0f0f0;
+            cursor: pointer;
+        }
+
+        .day-cell.other-month {
+            opacity: 0.25;
+        }
+
+        .day-cell .num {
+            font-size: 14px;
+            font-weight: 600;
+        }
+
+        .day-cell .shift-tag {
+            font-size: 10px;
+            margin-top: 2px;
+            padding: 1px 4px;
+            border-radius: 4px;
+            color: #fff;
+            font-weight: 500;
+        }
+
+        /* 班次背景色彩 */
+        .shift-夜班 { background-color: var(--night-color); }
+        .shift-休息 { background-color: var(--rest-color); }
+        .shift-白班 { background-color: var(--day-color); }
+
+        /* 今天高亮框 */
+        .day-cell.is-today {
+            border: 2px solid var(--today-border);
+        }
+
+        .has-note-dot {
+            position: absolute;
+            top: 3px;
+            right: 3px;
+            width: 5px;
+            height: 5px;
+            background-color: #e53935;
+            border-radius: 50%;
+        }
+
+        /* 详情与基准设置卡片 */
+        .info-card {
+            background: var(--card-bg);
+            border-radius: 12px;
+            padding: 14px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .info-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid #f0f0f0;
+            padding-bottom: 8px;
+        }
+
+        .info-title {
+            font-size: 15px;
+            font-weight: 600;
+        }
+
+        textarea {
+            width: 100%;
+            height: 60px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            padding: 8px;
+            font-size: 13px;
+            resize: none;
+            outline: none;
+        }
+
+        .settings-section {
+            font-size: 12px;
+            color: var(--text-sub);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            background: #fafafa;
+            padding: 8px 10px;
+            border-radius: 6px;
+        }
+
+        .settings-section input {
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            padding: 2px 6px;
+        }
+    /* 全局深色模式样式适配 */
+    body.dark-mode { background-color: #121212 !important; color: #e0e0e0 !important; }
+    body.dark-mode .card, body.dark-mode .task-item, body.dark-mode .note-item, body.dark-mode .box { background: #1e1e1e !important; color: #fff !important; }
+    body.dark-mode input, body.dark-mode textarea, body.dark-mode select { background-color: #2c2c2c !important; color: #ffffff !important; border-color: #444 !important; }
+    </style>
+</head>
+<body>
+
+<!-- 顶部导航 -->
+<div class="header">
+    <button class="btn" onclick="changeMonth(-1)">‹ 上月</button>
+    <h2 id="monthTitle">2026年 09月</h2>
+    <button class="btn" onclick="changeMonth(1)">下月 ›</button>
+</div>
+
+<!-- 班次说明图例 -->
+<div class="legend">
+    <div class="legend-item"><div class="dot night"></div>夜班 (3天)</div>
+    <div class="legend-item"><div class="dot rest"></div>休息 (3天)</div>
+    <div class="legend-item"><div class="dot day"></div>白班 (3天)</div>
+</div>
+
+<!-- 日历主体 -->
+<div class="calendar-card">
+    <div class="week-header">
+        <div>日</div><div>一</div><div>二</div><div>三</div><div>四</div><div>五</div><div>六</div>
+    </div>
+    <div class="days-grid" id="daysContainer"></div>
+</div>
+
+<!-- 日期详情与备注卡片 -->
+<div class="info-card">
+    <div class="info-header">
+        <span class="info-title" id="selectedDateText">请选择日期</span>
+        <span id="selectedShiftText" style="font-weight: 600; font-size: 14px;">-</span>
+    </div>
+    <textarea id="noteInput" placeholder="写点工作笔记或交接事项..."></textarea>
+    <button class="btn" style="width: 100%; text-align: center;" onclick="saveNote()">保存当日笔记</button>
+
+    <!-- 轮班基准推算设置 -->
+    <div class="settings-section">
+        <span>九天轮班基准日 (首个夜班):</span>
+        <input type="date" id="baseDateInput" onchange="updateBaseDate()">
+    </div>
+</div>
+
+<script>
+    // 自动同步全局护眼模式
+    if (localStorage.getItem('darkMode') === 'true') {
+        document.body.classList.add('dark-mode');
+    }
+    // 9天轮班周期定义：3夜 -> 3休 -> 3白
+    const SHIFT_CYCLE = ["夜班", "夜班", "夜班", "休息", "休息", "休息", "白班", "白班", "白班"];
+
+    let currentDate = new Date();
+    let selectedDateStr = "";
+
+    // 获取保存在本地的“首个夜班基准日”（默认值: 2026-09-01）
+    let baseDateStr = localStorage.getItem("shift_base_date") || "2026-09-01";
+
+    document.getElementById("baseDateInput").value = baseDateStr;
+
+    function initCalendar() {
+        renderHeader();
+        renderDays();
+        selectDate(formatDate(new Date()));
+    }
+
+    // 渲染顶部年月标题
+    function renderHeader() {
+        const year = currentDate.getFullYear();
+        const month = String(currentDate.getMonth() + 1).padStart(2, '0');
+        document.getElementById("monthTitle").innerText = `${year}年 ${month}月`;
+    }
+
+    // 计算指定日期属于什么班次
+    function getShiftForDate(targetDateStr) {
+        const base = new Date(baseDateStr + "T00:00:00");
+        const target = new Date(targetDateStr + "T00:00:00");
+
+        const diffDays = Math.floor((target - base) / (1000 * 60 * 60 * 24));
+
+        // 解决负数取模问题
+        let cycleIndex = diffDays % 9;
+        if (cycleIndex < 0) cycleIndex += 9;
+
+        return SHIFT_CYCLE[cycleIndex];
+    }
+
+    // 渲染日历网格
+    function renderDays() {
+        const container = document.getElementById("daysContainer");
+        container.innerHTML = "";
+
+        const year = currentDate.getFullYear();
+        const month = currentDate.getMonth();
+
+        // 当月第一天和最后一天
+        const firstDay = new Date(year, month, 1);
+        const lastDay = new Date(year, month + 1, 0);
+
+        const startWeekDay = firstDay.getDay(); // 0 是周日
+        const totalDays = lastDay.getDate();
+
+        // 今天日期
+        const todayStr = formatDate(new Date());
+
+        // 补充上个月的填位
+        const prevMonthLastDay = new Date(year, month, 0).getDate();
+        for (let i = startWeekDay - 1; i >= 0; i--) {
+            const dayNum = prevMonthLastDay - i;
+            const prevDate = new Date(year, month - 1, dayNum);
+            const dateStr = formatDate(prevDate);
+            createDayCell(container, dayNum, dateStr, true);
+        }
+
+        // 当月日期
+        for (let day = 1; day <= totalDays; day++) {
+            const dateObj = new Date(year, month, day);
+            const dateStr = formatDate(dateObj);
+            const isToday = (dateStr === todayStr);
+            createDayCell(container, day, dateStr, false, isToday);
+        }
+
+        // 补充下个月的填位
+        const remainingCells = 42 - container.children.length; // 保持 6 行 7 列
+        for (let day = 1; day <= remainingCells; day++) {
+            const nextDate = new Date(year, month + 1, day);
+            const dateStr = formatDate(nextDate);
+            createDayCell(container, day, dateStr, true);
+        }
+    }
+
+    function createDayCell(container, dayNum, dateStr, isOtherMonth, isToday = false) {
+        const cell = document.createElement("div");
+        cell.className = `day-cell ${isOtherMonth ? 'other-month' : ''} ${isToday ? 'is-today' : ''}`;
+
+        const shift = getShiftForDate(dateStr);
+
+        // 检查是否有笔记
+        const hasNote = localStorage.getItem("note_" + dateStr);
+        const noteDot = hasNote ? `<div class="has-note-dot"></div>` : '';
+
+        cell.innerHTML = `
+            ${noteDot}
+            <span class="num">${dayNum}</span>
+            <span class="shift-tag shift-${shift}">${shift}</span>
+        `;
+
+        cell.onclick = () => selectDate(dateStr);
+        container.appendChild(cell);
+    }
+
+    // 点击选择日期
+    function selectDate(dateStr) {
+        selectedDateStr = dateStr;
+        const shift = getShiftForDate(dateStr);
+
+        document.getElementById("selectedDateText").innerText = dateStr;
+        const shiftTextEl = document.getElementById("selectedShiftText");
+        shiftTextEl.innerText = shift;
+
+        // 设置班次文字颜色
+        if (shift === "夜班") shiftTextEl.style.color = "var(--night-color)";
+        else if (shift === "休息") shiftTextEl.style.color = "var(--rest-color)";
+        else shiftTextEl.style.color = "var(--day-color)";
+
+        // 加载笔记
+        const note = localStorage.getItem("note_" + dateStr) || "";
+        document.getElementById("noteInput").value = note;
+    }
+
+    // 保存笔记
+    function saveNote() {
+        if (!selectedDateStr) return;
+        const content = document.getElementById("noteInput").value.trim();
+        if (content) {
+            localStorage.setItem("note_" + selectedDateStr, content);
+        } else {
+            localStorage.removeItem("note_" + selectedDateStr);
+        }
+        renderDays(); // 刷新红点标记
+        alert("笔记已保存");
+    }
+
+    // 修改基准推算日期
+    function updateBaseDate() {
+        const val = document.getElementById("baseDateInput").value;
+        if (val) {
+            baseDateStr = val;
+            localStorage.setItem("shift_base_date", val);
+            renderDays();
+            selectDate(selectedDateStr);
+        }
+    }
+
+    function changeMonth(delta) {
+        currentDate.setMonth(currentDate.getMonth() + delta);
+        renderHeader();
+        renderDays();
+    }
+
+    function formatDate(d) {
+        const y = d.getFullYear();
+        const m = String(d.getMonth() + 1).padStart(2, '0');
+        const day = String(d.getDate()).padStart(2, '0');
+        return `${y}-${m}-${day}`;
+    }
+
+    // 页面初始化
+    initCalendar();
+</script>
+</body>
+</html>
